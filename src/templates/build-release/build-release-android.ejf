@@ -3,12 +3,14 @@ const isMonorepo = props.pathRelativeToRoot !== '.'
 
 const install = {
   yarn: "yarn",
-  npm: "npm install"
+  npm: "npm install",
+  bun: "bun install"
 }
 
 const build = {
   yarn: `yarn ${(isMonorepo) ? `--cwd ${props.pathRelativeToRoot} ` : ""}build:release:android`,
-  npm: `npm run build:release:android ${(isMonorepo) ? `--prefix ${props.pathRelativeToRoot}` : ""}`
+  npm: `npm run build:release:android ${(isMonorepo) ? `--prefix ${props.pathRelativeToRoot}` : ""}`,
+  bun: `bun run ${(isMonorepo) ? `--cwd ${props.pathRelativeToRoot} ` : ""}build:release:android`
 }
 %>
 
@@ -34,7 +36,7 @@ jobs:
           key: android-release-build-${{ github.event.pull_request.head.sha }}
 
   build-release-android:
-    needs: lookup-cached-build 
+    needs: lookup-cached-build
     if: needs.lookup-cached-build.outputs.build-exists != 'true'
     runs-on: ubuntu-latest
     steps:
@@ -48,6 +50,11 @@ jobs:
 
       - name: 🏗 Checkout repository
         uses: actions/checkout@v4
+
+      <%= if(props.packageManager === "bun") { %>
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+      <%= } %>
 
       - name: 📦 Install dependencies
         run: <%= install[props.packageManager] %>
@@ -66,7 +73,7 @@ jobs:
       - name: 🛠️ Build
         run: <%= build[props.packageManager] %>
 
-      - name: 📁 Prepare cache folder 
+      - name: 📁 Prepare cache folder
         run: |
           mkdir android-release-build
           mv <%= props.pathRelativeToRoot %>/android/app/build/outputs/apk/release/app-release.apk android-release-build/android-release.apk

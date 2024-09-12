@@ -3,12 +3,14 @@ const isMonorepo = props.pathRelativeToRoot !== '.'
 
 const install = {
   yarn: "yarn",
-  npm: "npm install"
+  npm: "npm install",
+  bun: "bun install"
 }
 
 const runTests = {
   yarn: `yarn ${(isMonorepo) ? `--cwd ${props.pathRelativeToRoot} ` : ""}detox:test:android`,
-  npm: `npm run detox:test:android ${(isMonorepo) ? `--prefix ${props.pathRelativeToRoot}` : ""}`
+  npm: `npm run detox:test:android ${(isMonorepo) ? `--prefix ${props.pathRelativeToRoot}` : ""}`,
+  bun: `bun run ${(isMonorepo) ? `--cwd ${props.pathRelativeToRoot} ` : ""}detox:test:android`
 }
 %>
 
@@ -38,6 +40,11 @@ jobs:
 
       - name: 🏗 Checkout repository
         uses: actions/checkout@v4
+
+      <%= if(props.packageManager === "bun") { %>
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+      <%= } %>
 
       - name: 📦 Install dependencies
         run: <%= install[props.packageManager] %>
@@ -74,7 +81,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-  
+
       - name: 📱 AVD cache
         uses: actions/cache@v4
         id: avd-cache
@@ -83,7 +90,7 @@ jobs:
             ~/.android/avd/*
             ~/.android/adb*
           key: avd-${{ env.API_LEVEL }}
-      
+
       - name: 📋 Run Detox tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
