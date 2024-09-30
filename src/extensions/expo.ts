@@ -1,10 +1,7 @@
-import { CycliToolbox, ProjectContext, Platform, Environment } from '../types'
+import { CycliToolbox, Platform, Environment } from '../types'
 
 module.exports = (toolbox: CycliToolbox) => {
-  const prebuild = (
-    context: ProjectContext,
-    { cleanAfter }: { cleanAfter: boolean }
-  ) => {
+  const prebuild = ({ cleanAfter }: { cleanAfter: boolean }) => {
     const existsAndroidDir = toolbox.filesystem.exists('android')
     const existsIOsDir = toolbox.filesystem.exists('ios')
 
@@ -12,7 +9,7 @@ module.exports = (toolbox: CycliToolbox) => {
 
     toolbox.interactive.spawnSubprocess(
       'Expo prebuild',
-      `npx expo prebuild --${context.packageManager}`,
+      `npx expo prebuild --${toolbox.context.packageManager()}`,
       { alwaysPrintStderr: true }
     )
 
@@ -69,10 +66,7 @@ module.exports = (toolbox: CycliToolbox) => {
 
 export interface ExpoExtension {
   expo: {
-    prebuild: (
-      context: ProjectContext,
-      { cleanAfter }: { cleanAfter: boolean }
-    ) => void
+    prebuild: ({ cleanAfter }: { cleanAfter: boolean }) => void
     eas: {
       buildConfigure: () => void
       updateConfigure: () => void

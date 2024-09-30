@@ -8,7 +8,7 @@ import detox from '../recipes/detox'
 import maestro from '../recipes/maestro'
 import isGitDirty from 'is-git-dirty'
 import sequentialPromiseMap from '../utils/sequentialPromiseMap'
-import { CycliError, CycliRecipe, CycliToolbox, ProjectContext } from '../types'
+import { CycliError, CycliRecipe, CycliToolbox } from '../types'
 import intersection from 'lodash/intersection'
 import {
   CYCLI_COMMAND,
@@ -90,6 +90,11 @@ const getSelectedOptions = async (toolbox: CycliToolbox): Promise<string[]> => {
   }
 }
 
+const validateProject = (toolbox: CycliToolbox) => {
+  toolbox.context.packageManager()
+  toolbox.context.path.packageRoot()
+}
+
 const runReactNativeCiCli = async (toolbox: CycliToolbox) => {
   toolbox.interactive.vspace()
   toolbox.interactive.intro(' Welcome to npx setup-ci! ')
@@ -128,18 +133,17 @@ const runReactNativeCiCli = async (toolbox: CycliToolbox) => {
     }
   }
 
-  const context: ProjectContext = toolbox.projectContext.obtain()
-  toolbox.interactive.surveyStep('Obtained project context.')
+  validateProject(toolbox)
 
-  const snapshotBefore = await toolbox.diff.gitStatus(context)
+  const snapshotBefore = await toolbox.diff.gitStatus()
   toolbox.interactive.surveyStep(
     'Created snapshot of project state before execution.'
   )
 
-  context.selectedOptions = await getSelectedOptions(toolbox)
+  toolbox.context.selectedOptions = await getSelectedOptions(toolbox)
 
   const executors = RECIPES.filter((recipe: CycliRecipe) =>
-    context.selectedOptions.includes(recipe.meta.flag)
+    toolbox.context.selectedOptions.includes(recipe.meta.flag)
   ).map((recipe: CycliRecipe) => recipe.execute)
 
   if (executors.length === 0) {
@@ -148,23 +152,21 @@ const runReactNativeCiCli = async (toolbox: CycliToolbox) => {
   }
 
   toolbox.interactive.surveyStep(
-    `Detected ${context.packageManager} as your package manager.`
+    `Detected ${toolbox.context.packageManager()} as your package manager.`
   )
 
-  await sequentialPromiseMap(executors, (executor) =>
-    executor(toolbox, context)
-  )
+  await sequentialPromiseMap(executors, (executor) => executor(toolbox))
 
-  const snapshotAfter = await toolbox.diff.gitStatus(context)
+  const snapshotAfter = await toolbox.diff.gitStatus()
   const diff = toolbox.diff.compare(snapshotBefore, snapshotAfter)
 
   toolbox.prettier.formatFiles(Array.from(diff.keys()))
 
-  toolbox.diff.print(diff, context)
+  toolbox.diff.print(diff)
 
   toolbox.furtherActions.print()
 
-  const usedFlags = context.selectedOptions
+  const usedFlags = toolbox.context.selectedOptions
     .map((flag: string) => `--${flag}`)
     .join(' ')
 
